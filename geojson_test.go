@@ -3,6 +3,8 @@ package gcfbackend
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	pasproj "github.com/HRMonitorr/PasetoprojectBackend"
 	"github.com/whatsauth/watoken"
 	"testing"
@@ -22,28 +24,47 @@ func TestGeneratePaseto(t *testing.T) {
 	fmt.Println(hasil, err)
 }
 
+// integrationDB requires an explicit opt-in and a disposable test database.
+func integrationDB(t *testing.T) string {
+	t.Helper()
+	if os.Getenv("GCFBACKEND_RUN_INTEGRATION") != "1" {
+		t.Skip("MongoDB integration test disabled")
+	}
+	db := os.Getenv("GCFBACKEND_TEST_DB")
+	if !strings.HasPrefix(db, "test_") || len(db) <= len("test_") {
+		t.Fatal("GCFBACKEND_TEST_DB must be a disposable database beginning with test_")
+	}
+	if os.Getenv("GCFBACKEND_TEST_MONGO") == "" {
+		t.Fatal("GCFBACKEND_TEST_MONGO is required")
+	}
+	return db
+}
+
 func TestUpdateData(t *testing.T) {
+	db := integrationDB(t)
 	data := LonLatProperties{
 		Type:   "Polygon",
 		Name:   "cihuy",
 		Volume: "1",
 	}
-	up := UpdateNameGeo("MONGO", "GIS", context.Background(), data)
+	up := UpdateNameGeo("GCFBACKEND_TEST_MONGO", db, context.Background(), data)
 	fmt.Println(up)
 }
 
 func TestDeleteDataGeo(t *testing.T) {
+	db := integrationDB(t)
 	data := LonLatProperties{
 		Type:   "Polygon",
 		Name:   "cihuy",
 		Volume: "1",
 	}
-	up := DeleteDataGeo("MONGO", "GIS", context.Background(), data)
+	up := DeleteDataGeo("GCFBACKEND_TEST_MONGO", db, context.Background(), data)
 	fmt.Println(up)
 }
 
 func TestInsertUser(t *testing.T) {
-	conn := GetConnectionMongo("MONGO", "GIS")
+	db := integrationDB(t)
+	conn := GetConnectionMongo("GCFBACKEND_TEST_MONGO", db)
 	pass, _ := pasproj.HashPass("rofiganteng")
 	data := RegisterStruct{
 		Username: "rofiasoy",
