@@ -2,6 +2,8 @@ package gcfbackend
 
 import (
 	"context"
+	"errors"
+	"math"
 	pasproj "github.com/HRMonitorr/PasetoprojectBackend"
 	"github.com/whatsauth/watoken"
 	"go.mongodb.org/mongo-driver/bson"
@@ -47,10 +49,16 @@ func IsExist(Tokenstr, PublicKey string) bool {
 }
 
 func GetCoordinateNear(MongoConn *mongo.Database, colname string, coordinate []float64) (result []GeoJson, err error) {
-	filter := bson.M{"geometry.coordinates": bson.M{
+	if len(coordinate) != 2 || math.IsNaN(coordinate[0]) || math.IsNaN(coordinate[1]) || math.IsInf(coordinate[0], 0) || math.IsInf(coordinate[1], 0) || coordinate[0] < -180 || coordinate[0] > 180 || coordinate[1] < -90 || coordinate[1] > 90 {
+		return nil, errors.New("expected longitude and latitude in valid ranges")
+	}
+	if MongoConn == nil || colname == "" {
+		return nil, errors.New("database and collection are required")
+	}
+	filter := bson.M{"geometry": bson.M{
 		"$near": bson.M{
 			"$geometry": bson.M{
-				"type":        "LineString",
+				"type":        "Point",
 				"coordinates": coordinate,
 			},
 		},
